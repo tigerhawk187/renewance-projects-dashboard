@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Renewance — Active Projects</title>
+<style>
+  :root{
+    --bg:#0f1115;--panel:#171a21;--panel2:#1e222b;--line:#2a2f3a;
+    --ink:#e8eaed;--ink-dim:#9aa2ad;--ink-faint:#6b7280;
+    --green:#3fb27f;--amber:#e0a83d;--red:#e05d5d;--blue:#5b8def;--chip:#232833;
+    --shadow:0 1px 0 rgba(255,255,255,.03),0 8px 24px rgba(0,0,0,.35);--radius:14px;
+  }
+  *{box-sizing:border-box}html,body{margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1300px;margin:0 auto;padding:24px 20px 64px}
+  header.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px}
+  .title h1{font-size:22px;margin:0;font-weight:650}
+  .title .sub{color:var(--ink-dim);font-size:13px;margin-top:3px}
+  .sources{display:flex;gap:8px;flex-wrap:wrap}
+  .src{background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:5px 11px;font-size:12px;color:var(--ink-dim);display:flex;align-items:center;gap:7px}
+  .dot{width:8px;height:8px;border-radius:50%;display:inline-block}.dot.ok{background:var(--green)}.dot.off{background:var(--ink-faint)}
+  .note{margin:14px 0 18px;background:linear-gradient(90deg,rgba(91,141,239,.13),rgba(91,141,239,.03));border:1px solid rgba(91,141,239,.32);color:#bcd2ff;border-radius:10px;padding:10px 14px;font-size:12.5px}
+  .summary{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:18px}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px}
+  .stat .n{font-size:24px;font-weight:680}.stat .l{color:var(--ink-dim);font-size:12px;margin-top:2px}
+  .stat .n.red{color:var(--red)}.stat .n.green{color:var(--green)}.stat .n.blue{color:var(--blue)}
+  .controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:16px}
+  .seg{display:flex;background:var(--panel2);border:1px solid var(--line);border-radius:9px;overflow:hidden}
+  .seg button{background:transparent;color:var(--ink-dim);border:0;padding:7px 14px;font-size:13px;cursor:pointer;font-family:inherit}
+  .seg button.on{background:var(--blue);color:#fff}
+  label.lb{color:var(--ink-faint);font-size:11px;text-transform:uppercase;letter-spacing:.6px}
+  select,input[type=search]{background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:9px;padding:7px 10px;font-size:13px;font-family:inherit}
+  input[type=search]{min-width:230px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px;cursor:pointer;transition:transform .08s,border-color .12s,box-shadow .12s}
+  .card:hover{transform:translateY(-2px);border-color:#39414f;box-shadow:var(--shadow)}
+  .rowtop{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+  .pname{font-weight:620;font-size:15px;line-height:1.25}
+  .pcode{color:var(--ink-faint);font-size:11px;font-family:ui-monospace,Menlo,monospace;margin-top:3px;word-break:break-all}
+  .cust{color:var(--ink-dim);font-size:12.5px;margin-top:3px}
+  .chip{font-size:10.5px;padding:4px 9px;border-radius:999px;white-space:nowrap;border:1px solid transparent}
+  .chip.Ongoing{background:rgba(91,141,239,.14);color:#9cbcff;border-color:rgba(91,141,239,.3)}
+  .chip.InProgress{background:rgba(63,178,127,.14);color:#8fe0bb;border-color:rgba(63,178,127,.3)}
+  .chip.Scheduled{background:rgba(63,178,127,.10);color:#8fe0bb;border-color:rgba(63,178,127,.25)}
+  .chip.NotScheduled{background:rgba(224,168,61,.14);color:#f0cd86;border-color:rgba(224,168,61,.3)}
+  .chip.Pipeline{background:rgba(155,163,173,.14);color:#c3c9d2;border-color:rgba(155,163,173,.3)}
+  .metrics{display:flex;gap:16px;margin-top:14px}
+  .metric{flex:1}.metric .mv{font-size:19px;font-weight:660}.metric .ml{font-size:11px;color:var(--ink-faint);margin-top:1px}
+  .burnrow{margin-top:12px}
+  .burnrow .bl{display:flex;justify-content:space-between;font-size:11px;color:var(--ink-dim);margin-bottom:4px}
+  .bar{height:6px;border-radius:6px;background:var(--panel2);overflow:hidden}.bar>i{display:block;height:100%;border-radius:6px}
+  .bar>i.g{background:var(--green)}.bar>i.a{background:var(--amber)}.bar>i.r{background:var(--red)}
+  .metaline{display:flex;justify-content:space-between;align-items:center;margin-top:13px;font-size:12px;color:var(--ink-faint)}
+  .flag.red{color:var(--red)}.flag.amber{color:var(--amber)}.flag.none{color:var(--ink-faint)}
+  .scrim{position:fixed;inset:0;background:rgba(6,8,12,.66);backdrop-filter:blur(3px);display:none;align-items:flex-start;justify-content:center;padding:40px 16px;overflow:auto;z-index:50}
+  .scrim.open{display:flex}
+  .modal{background:var(--panel);border:1px solid var(--line);border-radius:18px;max-width:880px;width:100%;box-shadow:var(--shadow)}
+  .mhead{padding:20px 24px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
+  .mhead h2{margin:0;font-size:19px}.mhead .mc{color:var(--ink-dim);font-size:12.5px;margin-top:5px;line-height:1.5}
+  .xbtn{background:var(--panel2);border:1px solid var(--line);color:var(--ink-dim);border-radius:9px;width:34px;height:34px;font-size:18px;cursor:pointer;flex:none}
+  .mbody{padding:8px 24px 24px}.sec{margin-top:20px}
+  .sec h3{font-size:12px;text-transform:uppercase;letter-spacing:.8px;color:var(--ink-faint);margin:0 0 10px}
+  .prog{font-size:14px;line-height:1.55}
+  .kv{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+  .box{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:14px}
+  .box .bh{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+  .box small{color:var(--ink-faint);font-size:11.5px}
+  .crit{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:8px}
+  .crit li{background:var(--panel2);border:1px solid var(--line);border-left-width:3px;border-radius:10px;padding:10px 12px;font-size:13.5px}
+  .crit li.sev-red{border-left-color:var(--red)}.crit li.sev-amber{border-left-color:var(--amber)}.crit li.sev-info{border-left-color:var(--blue)}
+  .crit .tag{font-size:10px;text-transform:uppercase;letter-spacing:.5px;padding:2px 7px;border-radius:6px;background:var(--chip);color:var(--ink-dim);margin-right:6px}
+  .crit .meta{color:var(--ink-faint);font-size:11px;margin-top:4px}
+  .rep{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:8px}
+  .rep .rh{display:flex;justify-content:space-between;font-size:12px;color:var(--ink-dim);margin-bottom:4px}
+  footer{margin-top:34px;color:var(--ink-faint);font-size:12px;line-height:1.6;border-top:1px solid var(--line);padding-top:16px}
+  @media(max-width:760px){.summary{grid-template-columns:repeat(2,1fr)}.kv{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="title"><h1>Renewance — Active Projects</h1>
+      <div class="sub" id="subline"></div></div>
+    <div class="sources">
+      <span class="src"><span class="dot ok"></span>Lift (Quickbase) · live</span>
+      <span class="src"><span class="dot off"></span>Outlook complaints · Phase 2</span>
+    </div>
+  </header>
+  <div class="note"><strong>Live data from Lift.</strong> Hours worked and expense spend are actuals. Budget targets are not yet populated in Lift, so a labor "over plan" flag is shown only for discrete scheduled jobs where a scheduled-hours figure exists; Ongoing O&M is shown by activity and spend, not a budget bar. Materials show spend to date (no budget target yet).</div>
+  <div class="summary" id="summary"></div>
+  <div class="controls">
+    <div class="seg" id="scope">
+      <button data-v="customer" class="on">Customer</button>
+      <button data-v="internal">Internal</button>
+      <button data-v="all">All</button>
+    </div>
+    <div><label class="lb">Status</label>
+      <select id="fStatus"><option value="">All</option><option>Ongoing</option><option>In Progress</option><option>Scheduled</option><option>Not Scheduled</option><option>Pipeline</option></select></div>
+    <div><label class="lb">Sort</label>
+      <select id="fSort"><option value="activity">Recent activity</option><option value="hours">Hours worked</option><option value="crit">Critical items</option><option value="spend">Expense spend</option></select></div>
+    <div style="margin-left:auto"><input type="search" id="search" placeholder="Search project, code, customer, PM…" /></div>
+  </div>
+  <div class="grid" id="grid"></div>
+  <footer id="footer"></footer>
+</div>
+<div class="scrim" id="scrim"><div class="modal" id="modal"></div></div>
+<script src="data/projects.js"></script>
+<script>
+const RAW = window.DASHBOARD;
+// reclassify internal: customer named "Renewance"
+RAW.projects.forEach(p=>{ if((p.customer||"").trim().toLowerCase()==="renewance") p.internal=true; });
+const $=s=>document.querySelector(s);
+const money=n=>"$"+Math.round(n||0).toLocaleString();
+const num=n=>Math.round(n||0).toLocaleString();
+let scope="customer";
+function chipClass(s){return (s||"").replace(/[^A-Za-z]/g,"");}
+function daysSince(d){ if(!d) return null; const t=(Date.now()-new Date(d).getTime())/86400000; return Math.floor(t); }
+function isDiscrete(p){ return (p.status==="In Progress"||p.status==="Scheduled") && p.labor.assignedHours>0; }
+function burnRag(p){ if(!isDiscrete(p)||!p.labor.burnPct) return null; const b=p.labor.burnPct; return b>=100?"r":(b>=90?"a":"g"); }
+
+function pool(){
+  return RAW.projects.filter(p=> scope==="all"?true : scope==="internal"?p.internal : !p.internal);
+}
+function filtered(){
+  const s=$("#fStatus").value, q=$("#search").value.trim().toLowerCase(), so=$("#fSort").value;
+  let a=pool().filter(p=>{
+    if(s&&p.status!==s) return false;
+    if(q&&!((p.name+" "+p.code+" "+p.customer+" "+p.pm).toLowerCase().includes(q))) return false;
+    return true;
+  });
+  const key={activity:p=>-(new Date(p.lastReport||0).getTime()||0),hours:p=>-(p.labor.workedHours||0),crit:p=>-(p.critical.length),spend:p=>-(p.materials.spent||0)}[so];
+  return a.sort((x,y)=>key(x)-key(y));
+}
+function renderSummary(){
+  const a=pool();
+  const inprog=a.filter(p=>p.status==="In Progress").length;
+  const ongoing=a.filter(p=>p.status==="Ongoing").length;
+  const recent=a.filter(p=>{const d=daysSince(p.lastReport);return d!==null&&d<=7;}).length;
+  const reds=a.reduce((n,p)=>n+p.critical.filter(c=>c.sev==="red").length,0);
+  const spend=a.reduce((n,p)=>n+(p.materials.spent||0),0);
+  const cells=[[a.length,"Active projects",""],[inprog,"In progress","blue"],[ongoing,"Ongoing O&M",""],[recent,"Field activity ≤7d","green"],[money(spend),"Expense spend (180d)",""]];
+  $("#summary").innerHTML=cells.map(c=>`<div class="stat"><div class="n ${c[2]}">${c[0]}</div><div class="l">${c[1]}</div></div>`).join("");
+}
+function card(p){
+  const rag=burnRag(p);
+  const reds=p.critical.filter(c=>c.sev==="red").length, ambers=p.critical.filter(c=>c.sev==="amber").length;
+  let flag=`<span class="flag none">No flags</span>`;
+  if(reds) flag=`<span class="flag red">● ${reds} critical</span>`; else if(ambers) flag=`<span class="flag amber">● ${ambers} to watch</span>`;
+  const d=daysSince(p.lastReport);
+  const last=p.lastReport?`Last report ${d===0?"today":d+"d ago"}`:"No recent report";
+  let budget = isDiscrete(p)
+    ? `<div class="burnrow"><div class="bl"><span>Worked ${num(p.labor.workedHours)} / ${num(p.labor.assignedHours)} scheduled h</span><span>${p.labor.burnPct}%</span></div><div class="bar"><i class="${rag}" style="width:${Math.min(p.labor.burnPct,100)}%"></i></div></div>`
+    : "";
+  return `<div class="card" data-id="${p.id}">
+    <div class="rowtop"><div><div class="pname">${p.name}</div><div class="pcode">${p.code}</div><div class="cust">${p.customer||"—"}${p.pm?" · "+p.pm:""}</div></div>
+      <span class="chip ${chipClass(p.status)}">${p.status}</span></div>
+    <div class="metrics">
+      <div class="metric"><div class="mv">${num(p.labor.workedHours)}</div><div class="ml">hours worked</div></div>
+      <div class="metric"><div class="mv">${p.materials.spent>0?money(p.materials.spent):"—"}</div><div class="ml">expense spend</div></div>
+    </div>${budget}
+    <div class="metaline">${flag}<span>${last}</span></div></div>`;
+}
+function renderGrid(){
+  renderSummary();
+  const a=filtered();
+  $("#grid").innerHTML=a.map(card).join("")||`<div style="color:var(--ink-dim);padding:30px">No projects match.</div>`;
+  document.querySelectorAll(".card").forEach(c=>c.addEventListener("click",()=>openModal(c.dataset.id)));
+}
+function openModal(id){
+  const p=RAW.projects.find(x=>x.id===id); if(!p) return;
+  const crit=p.critical.length?`<ul class="crit">`+p.critical.map(c=>`<li class="sev-${c.sev}"><span class="tag">${c.type}</span>${c.text}<div class="meta">${c.meta||""}</div></li>`).join("")+`</ul>`:`<div style="color:var(--ink-faint)">No open critical items in the last 45 days.</div>`;
+  const reps=p.reports.length?p.reports.map(r=>`<div class="rep"><div class="rh"><span>${r.date||""}${r.techs?" · "+r.techs+" tech":""}</span><span>${r.hours!=null?r.hours+" h":""}</span></div><div>${r.text||"(no work-performed text)"}</div>${r.issues?`<div style="color:var(--amber);font-size:12.5px;margin-top:6px">Issues: ${r.issues}</div>`:""}${r.requests?`<div style="color:var(--blue);font-size:12.5px;margin-top:4px">Customer request: ${r.requests}</div>`:""}</div>`).join(""):`<div style="color:var(--ink-faint)">No daily reports in the last 45 days.</div>`;
+  const laborNote = isDiscrete(p)?`${num(p.labor.workedHours)} worked of ${num(p.labor.assignedHours)} scheduled (${p.labor.burnPct}%)`:`${num(p.labor.workedHours)} hours worked · Ongoing, no fixed labor budget in Lift`;
+  $("#modal").innerHTML=`<div class="mhead"><div><h2>${p.name}</h2>
+    <div class="mc">${p.code}<br>${p.customer||"—"} · <span class="chip ${chipClass(p.status)}">${p.status}</span>${p.pm?" · PM: "+p.pm:""}${p.segment?" · "+p.segment:""}</div></div>
+    <button class="xbtn" onclick="closeModal()">×</button></div>
+    <div class="mbody">
+      <div class="sec"><h3>Progress</h3><div class="prog">${p.progress||p.summary||"No recent narrative."}</div></div>
+      <div class="sec"><h3>Budget burn</h3><div class="kv">
+        <div class="box"><div class="bh"><span style="color:var(--ink-dim);font-size:13px">Labor</span></div><div style="font-size:13.5px">${laborNote}</div><div style="margin-top:8px"><small>Actuals from Lift daily reports / time entries</small></div></div>
+        <div class="box"><div class="bh"><span style="color:var(--ink-dim);font-size:13px">Materials</span><span style="font-weight:600">${p.materials.spent>0?money(p.materials.spent):"—"}</span></div><div><small>Spend to date (last 180d) from Lift expenses. No budget target set${p.materials.dealAmount?`. Deal amount ${money(p.materials.dealAmount)}`:""}.</small></div></div>
+      </div></div>
+      <div class="sec"><h3>Critical items · requests · issues</h3>${crit}</div>
+      <div class="sec"><h3>Recent daily reports (45d)</h3>${reps}</div>
+    </div>`;
+  $("#scrim").classList.add("open");
+}
+function closeModal(){ $("#scrim").classList.remove("open"); }
+$("#scrim").addEventListener("click",e=>{if(e.target.id==="scrim")closeModal();});
+document.addEventListener("keydown",e=>{if(e.key==="Escape")closeModal();});
+document.querySelectorAll("#scope button").forEach(b=>b.addEventListener("click",()=>{
+  document.querySelectorAll("#scope button").forEach(x=>x.classList.remove("on"));
+  b.classList.add("on"); scope=b.dataset.v; renderGrid();
+}));
+["#fStatus","#fSort"].forEach(s=>$(s).addEventListener("change",renderGrid));
+$("#search").addEventListener("input",renderGrid);
+$("#subline").textContent="Live snapshot from Lift · Updated "+RAW.meta.updated+" · "+RAW.meta.counts.customer+" customer projects";
+$("#footer").innerHTML="Spine: Lift (Quickbase) — projects, statuses, daily-report hours & narrative, expenses. Labor actuals from time entries; a plan/budget baseline is not yet populated in Lift (see note). Customer complaints from Outlook are Phase 2. Refresh target: GitHub Actions, weekdays ~4am CT.";
+renderGrid();
+</script>
+</body>
+</html>

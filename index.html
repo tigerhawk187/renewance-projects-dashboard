@@ -202,7 +202,9 @@ function renderGrid(){
 }
 function openModal(id){
   const p=RAW.projects.find(x=>x.id===id); if(!p) return;
-  const crit=p.critical.length?`<ul class="crit">`+p.critical.map(c=>`<li class="sev-${c.sev}"><span class="tag">${c.type}</span>${c.text}<div class="meta">${c.meta||""}</div></li>`).join("")+`</ul>`:`<div style="color:var(--ink-faint)">No open critical items in the last 45 days.</div>`;
+  const agMs=(ag&&ag.milestones?ag.milestones:[]).filter(m=>m.date).map(m=>{const dd=Math.floor((new Date(m.date)-Date.now())/86400000);if(dd<0&&dd>-45)return{sev:"amber",type:"Milestone passed",text:m.label,meta:m.date+" ("+(-dd)+"d ago)"};if(dd>=0&&dd<=45)return{sev:"info",type:"Upcoming milestone",text:m.label,meta:m.date+" (in "+dd+"d)"};return null;}).filter(Boolean);
+  const allCrit=agMs.concat(p.critical);
+  const crit=allCrit.length?`<ul class="crit">`+allCrit.map(c=>`<li class="sev-${c.sev}"><span class="tag">${c.type}</span>${c.text}<div class="meta">${c.meta||""}</div></li>`).join("")+`</ul>`:`<div style="color:var(--ink-faint)">No open critical items in the last 45 days.</div>`;
   const reps=p.reports.length?p.reports.map(r=>`<div class="rep"><div class="rh"><span>${r.date||""}${r.techs?" · "+r.techs+" tech":""}</span><span>${r.hours!=null?r.hours+" h":""}</span></div><div>${r.text||"(no work-performed text)"}</div>${r.issues?`<div style="color:var(--amber);font-size:12.5px;margin-top:6px">Issues: ${r.issues}</div>`:""}${r.requests?`<div style="color:var(--blue);font-size:12.5px;margin-top:4px">Customer request: ${r.requests}</div>`:""}</div>`).join(""):`<div style="color:var(--ink-faint)">No daily reports in the last 45 days.</div>`;
   const laborNote = isDiscrete(p)?`${num(p.labor.workedHours)} worked of ${num(p.labor.assignedHours)} scheduled (${p.labor.burnPct}%)`:`${num(p.labor.workedHours)} hours worked · Ongoing, no fixed labor budget in Lift`;
   const ag=(window.AGREEMENTS||{})[p.code];

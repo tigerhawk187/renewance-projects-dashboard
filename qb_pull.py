@@ -37,19 +37,20 @@ def strip(s):
     s = re.sub(r"&nbsp;|&amp;|&#160;", " ", s)
     return re.sub(r"\s+", " ", s).strip()
 
-# Lift's field 114 (Project Management Alerts) emits generic formula boilerplate
-# like "Alert: % Hours Assigned is greater than 1! Alert: % Hours Worked is
-# greater than 1!" - no project name, no numbers, and it duplicates the
-# contract-aware burn bar the dashboard already computes. Drop those clauses;
-# keep any substantive alert text Lift may put in the same field.
-GENERIC_ALERT = re.compile(r"%\s*hours\s+(assigned|worked)\s+is\s+greater\s+than\s+1", re.I)
+# Lift's field 114 (Project Management Alerts) emits auto-generated threshold
+# boilerplate like "Alert: % Hours Worked is greater than 1!", "Warning: Total
+# Labor Hours Promised is less than 8 hours!", "Warning: % Hours Worked is at or
+# above 0.5!" - no project context, and it duplicates the contract-aware burn
+# bar the dashboard already computes. Drop any threshold clause (metric token +
+# comparator); keep any substantive alert text Lift may put in the same field.
+LIFT_THRESHOLD = re.compile(r"(?:%\s*hours|hours?\b).*?(?:greater than|less than|at or above|>=|<=)", re.I)
 def clean_pm_alert(s):
     if not s: return ""
-    parts = re.split(r"(?i)\balert:\s*", s)
+    parts = re.split(r"(?i)\b(?:alert|warning):\s*", s)
     keep = []
     for part in parts:
         part = part.strip().strip("!").strip()
-        if not part or GENERIC_ALERT.search(part):
+        if not part or LIFT_THRESHOLD.search(part):
             continue
         keep.append(part)
     return "; ".join(keep)

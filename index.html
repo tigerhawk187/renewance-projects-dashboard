@@ -129,14 +129,16 @@
 const RAW = window.DASHBOARD;
 // reclassify internal: customer named "Renewance"
 RAW.projects.forEach(p=>{ if((p.customer||"").trim().toLowerCase()==="renewance") p.internal=true; });
-// Drop Lift's generic "% Hours ... is greater than 1" PM-alert boilerplate.
-// It has no numbers or context and duplicates the contract-aware burn bar,
-// which already flags over-plan labor with real hours and dollars. Cleans
-// data already committed before qb_pull.py's server-side filter takes over.
-const GENERIC_PM_ALERT=/%\s*hours\s+(assigned|worked)\s+is\s+greater\s+than\s+1/i;
+// Drop Lift's auto-generated threshold "PM alert" boilerplate (field 114):
+// "% Hours ... is greater than 1", "% Hours Worked is at or above 0.5",
+// "Total Labor Hours Promised is less than 8 hours", etc. These carry no
+// project context and duplicate the contract-aware burn bar, which already
+// flags labor-vs-plan with real hours and dollars. Any non-threshold PM text
+// is preserved. Cleans data already committed before qb_pull.py filters it.
+const LIFT_THRESHOLD=/(?:%\s*hours|hours?\b)[\s\S]*?(?:greater than|less than|at or above|>=|<=)/i;
 RAW.projects.forEach(p=>{
   if(!Array.isArray(p.critical)) return;
-  p.critical=p.critical.filter(c=>!(c&&c.type==="PM alert"&&GENERIC_PM_ALERT.test(c.text||"")));
+  p.critical=p.critical.filter(c=>!(c&&c.type==="PM alert"&&LIFT_THRESHOLD.test(c.text||"")));
 });
 const $=s=>document.querySelector(s);
 const money=n=>"$"+Math.round(n||0).toLocaleString();

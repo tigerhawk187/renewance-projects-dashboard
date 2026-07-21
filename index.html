@@ -99,7 +99,7 @@
       <a class="src" href="https://docs.craft.do/editor/d/251a6f03-39a1-a67e-c789-e83e370ae8b0/867bb73e-153e-daed-20b4-931848735f2d" target="_blank" style="text-decoration:none"><span class="dot ok"></span>Customer complaints (Craft, daily)</a>
     </div>
   </header>
-  <div class="note"><strong>Live from Lift, budgets from contracts.</strong> Hours worked and expense spend are actuals from Lift. Where an agreement is on file, the burn bars compare actuals against the contracted labor-hours and expense budget; otherwise labor shows against Lift scheduled hours (discrete jobs) or as activity only (Ongoing O&M). Open a card for the Contract panel, terms, and milestones.</div>
+  <div class="note"><strong>Live from Lift, budgets from contracts.</strong> Hours worked and expense spend are actuals from Lift. Where an agreement is on file, the burn bars compare actuals against the contracted labor-hours and expense budget; otherwise labor shows against Lift scheduled hours (discrete jobs) or as activity only (LTSA O&M). Open a card for the Contract panel, terms, and milestones.</div>
   <div class="summary" id="summary"></div>
   <div class="controls">
     <div class="seg" id="scope">
@@ -114,6 +114,15 @@
         <button data-s="Scheduled" class="on">Scheduled</button>
         <button data-s="Not Scheduled" class="on">Not Scheduled</button>
         <button data-s="Pipeline" class="on">Pipeline</button>
+      </div></div>
+    <div><label class="lb">Type (pick any)</label>
+      <div class="statuschips" id="fType">
+        <button data-t="LTSA" class="on">LTSA</button>
+        <button data-t="Flow" class="on">Flow (CATL)</button>
+        <button data-t="Project" class="on">Project</button>
+        <button data-t="MSA" class="on">MSA</button>
+        <button data-t="EV" class="on">EV</button>
+        <button data-t="Warehouse" class="on">Warehouse</button>
       </div></div>
     <div><label class="lb">Sort</label>
       <select id="fSort"><option value="activity">Recent activity</option><option value="hours">Hours worked</option><option value="crit">Critical items</option><option value="spend">Expense spend</option></select></div>
@@ -151,6 +160,23 @@ function burnRag(p){ const lb=laborBurn(p); return lb?ragOf(lb.pct):null; }
 function agFor(p){ return (window.AGREEMENTS||{})[p.code]; }
 function contractEnd(p){ const a=agFor(p); return (a&&a.contractedEnd) || p.endDate || null; }
 function money2(n,cur){ return (cur==="CAD"?"CA$":"$")+Math.round(n||0).toLocaleString(); }
+// Project TYPE classification. LTSA is driven by the executed-agreement layer
+// (reliable), not Lift's native "Governed by an LTSA" field (incomplete). CATL
+// is flow/dispatch by rule (PO per task, no service contract), so it never
+// counts as LTSA regardless of any master-agreement wording.
+const CATL_RE=/CATL/i, LTSA_RE=/LTSA|O&M/i, TYPE_CHIPS=["LTSA","Flow","Project","MSA","EV","Warehouse"];
+function isCATL(p){ return CATL_RE.test((p.customer||"")+" "+(p.name||"")+" "+(p.code||"")); }
+function agIsLTSA(p){ const a=agFor(p); return !!(a && LTSA_RE.test((a.dealName||"")+" "+(a.scope||"")+" "+(a.term||""))); }
+function kind(p){
+  if(p.internal) return "Internal";
+  if(isCATL(p)) return "Flow";
+  if(agIsLTSA(p)) return "LTSA";
+  if((p.txn||"")==="Governed by an MSA") return "MSA";
+  if((p.segment||"")==="EV") return "EV";
+  if(/WAREHOUSE|STORAGE/i.test(p.code||"")) return "Warehouse";
+  return "Project";
+}
+function ltsaDeal(p){ const a=agFor(p); return (a&&a.dealName)?a.dealName:p.code; }
 function ragOf(pct){ return pct>=100?"r":(pct>=90?"a":"g"); }
 function laborBudget(p){ const a=agFor(p); return a&&a.laborHoursBudget?a.laborHoursBudget:null; }
 function matBudget(p){ const a=agFor(p); return a&&a.expenseBudget?a.expenseBudget:null; }
@@ -175,9 +201,10 @@ function pool(){
   return RAW.projects.filter(p=> scope==="all"?true : scope==="internal"?p.internal : !p.internal);
 }
 function filtered(){
-  const sel=new Set([...document.querySelectorAll('#fStatus button.on')].map(b=>b.dataset.s)), q=$("#search").value.trim().toLowerCase(), so=$("#fSort").value;
+  const sel=new Set([...document.querySelectorAll('#fStatus button.on')].map(b=>b.dataset.s)), selT=new Set([...document.querySelectorAll('#fType button.on')].map(b=>b.dataset.t)), q=$("#search").value.trim().toLowerCase(), so=$("#fSort").value;
   let a=pool().filter(p=>{
     if(!sel.has(p.status)) return false;
+    const k=kind(p); if(TYPE_CHIPS.includes(k) && !selT.has(k)) return false;
     if(q&&!((p.name+" "+p.code+" "+p.customer+" "+p.pm).toLowerCase().includes(q))) return false;
     return true;
   });
@@ -187,11 +214,11 @@ function filtered(){
 function renderSummary(){
   const a=pool();
   const inprog=a.filter(p=>p.status==="In Progress").length;
-  const ongoing=a.filter(p=>p.status==="Ongoing").length;
+  const ltsa=new Set(a.filter(p=>kind(p)==="LTSA").map(ltsaDeal)).size;
+  const flow=a.filter(p=>kind(p)==="Flow").length;
   const recent=a.filter(p=>{const d=daysSince(p.lastReport);return d!==null&&d<=7;}).length;
-  const reds=a.reduce((n,p)=>n+p.critical.filter(c=>c.sev==="red").length,0);
   const spend=a.reduce((n,p)=>n+(p.materials.spent||0),0);
-  const cells=[[a.length,"Active projects",""],[inprog,"In progress","blue"],[ongoing,"Ongoing O&M",""],[recent,"Field activity ≤7d","green"],[money(spend),"Expense spend (180d)",""]];
+  const cells=[[a.length,"Active projects",""],[ltsa,"LTSA agreements",""],[inprog,"In progress","blue"],[flow,"Flow jobs (CATL)",""],[recent,"Field activity ≤7d","green"],[money(spend),"Expense spend (180d)",""]];
   $("#summary").innerHTML=cells.map(c=>`<div class="stat"><div class="n ${c[2]}">${c[0]}</div><div class="l">${c[1]}</div></div>`).join("");
 }
 function card(p){
@@ -208,7 +235,7 @@ function card(p){
   if(mbn) budget += `<div class="burnrow"><div class="bl"><span>Materials ${money(p.materials.spent)} / ${money(mbn.budget)}</span><span>${mbn.pct}%</span></div><div class="bar"><i class="${ragOf(mbn.pct)}" style="width:${Math.min(mbn.pct,100)}%"></i></div></div>`;
   return `<div class="card" data-id="${p.id}">
     <div class="rowtop"><div><div class="pname">${p.name}</div><div class="pcode">${p.code}</div><div class="cust">${p.customer||"-"}${p.pm?" · "+p.pm:""}</div></div>
-      <span class="chip ${chipClass(p.status)}">${p.status}</span></div>
+      <div style="text-align:right;white-space:nowrap"><span class="chip ${chipClass(p.status)}">${p.status}</span><div style="margin-top:5px;font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-dim)">${kind(p)}</div></div></div>
     <div class="metrics">
       <div class="metric"><div class="mv">${num(p.labor.workedHours)}</div><div class="ml">hours worked</div></div>
       <div class="metric"><div class="mv">${p.materials.spent>0?money(p.materials.spent):"-"}</div><div class="ml">expense spend</div></div>
@@ -236,7 +263,7 @@ function openModal(id){
     <button class="xbtn" onclick="closeModal()">×</button></div>
     <div class="mbody">
       <div class="sec"><h3>Progress</h3><div class="prog">${p.progress||p.summary||"No recent narrative."}</div></div>
-      <div class="sec"><h3>Timeline</h3><div style="font-size:13.5px">Start: <b>${p.startDate||"n/a"}</b> · Contracted end: <b>${contractEnd(p)||"n/a"}</b>${estCompletion(p)?` · Progress estimate: <b>${estCompletion(p)}</b>`:""}</div>${estCompletion(p)?`<div style="margin-top:6px"><small>Progress estimate projects the contracted end from current Lift pace (worked vs scheduled hours). Ongoing O&M shows the contract end only.</small></div>`:""}</div>
+      <div class="sec"><h3>Timeline</h3><div style="font-size:13.5px">Start: <b>${p.startDate||"n/a"}</b> · Contracted end: <b>${contractEnd(p)||"n/a"}</b>${estCompletion(p)?` · Progress estimate: <b>${estCompletion(p)}</b>`:""}</div>${estCompletion(p)?`<div style="margin-top:6px"><small>Progress estimate projects the contracted end from current Lift pace (worked vs scheduled hours). LTSA shows the contract end only.</small></div>`:""}</div>
       <div class="sec"><h3>Budget burn</h3><div class="kv">
         <div class="box"><div class="bh"><span style="color:var(--ink-dim);font-size:13px">Labor</span>${lbn?`<span style="font-weight:600;color:var(--${ragOf(lbn.pct)==='r'?'red':ragOf(lbn.pct)==='a'?'amber':'green'})">${lbn.pct}%</span>`:""}</div>${lbn?`<div class="bar" style="margin-bottom:8px"><i class="${ragOf(lbn.pct)}" style="width:${Math.min(lbn.pct,100)}%"></i></div>`:""}<div style="font-size:13px">${num(p.labor.workedHours)} h worked${lbn?` of ${num(lbn.budget)} ${lbn.basis==='contract'?'contracted':'scheduled'}`:""}</div><div style="margin-top:6px"><small>${lbn&&lbn.basis==='contract'?'Actual Lift hours vs contracted labor budget':'Actuals from Lift; no contracted labor budget yet'}</small></div></div>
         <div class="box"><div class="bh"><span style="color:var(--ink-dim);font-size:13px">Materials</span><span style="font-weight:600">${p.materials.spent>0?money(p.materials.spent):"-"}</span></div>${mbn?`<div class="bar" style="margin:6px 0"><i class="${ragOf(mbn.pct)}" style="width:${Math.min(mbn.pct,100)}%"></i></div><div style="font-size:12.5px">${mbn.pct}% of ${money(mbn.budget)} contracted expense budget</div>`:""}<div style="margin-top:6px"><small>Spend to date (180d) from Lift expenses${mbn?"":". No expense budget in the agreement"}.</small></div></div>
@@ -255,6 +282,7 @@ document.querySelectorAll("#scope button").forEach(b=>b.addEventListener("click"
   b.classList.add("on"); scope=b.dataset.v; renderGrid();
 }));
 document.querySelectorAll('#fStatus button').forEach(b=>b.addEventListener('click',()=>{b.classList.toggle('on');renderGrid();}));
+document.querySelectorAll('#fType button').forEach(b=>b.addEventListener('click',()=>{b.classList.toggle('on');renderGrid();}));
 $("#fSort").addEventListener("change",renderGrid);
 $("#search").addEventListener("input",renderGrid);
 function applyTheme(t){document.body.classList.toggle('light',t==='light');const b=$("#themeBtn");if(b)b.textContent=t==='light'?'Dark':'Light';}

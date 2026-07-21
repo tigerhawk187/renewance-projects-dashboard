@@ -218,7 +218,7 @@ function renderSummary(){
   const flow=a.filter(p=>kind(p)==="Flow").length;
   const recent=a.filter(p=>{const d=daysSince(p.lastReport);return d!==null&&d<=7;}).length;
   const spend=a.reduce((n,p)=>n+(p.materials.spent||0),0);
-  const cells=[[a.length,"Active projects",""],[ltsa,"LTSA agreements",""],[inprog,"In progress","blue"],[flow,"Flow jobs (CATL)",""],[recent,"Field activity ≤7d","green"],[money(spend),"Expense spend (180d)",""]];
+  const cells=[[a.length,"Active projects",""],[ltsa,"LTSA agreements",""],[inprog,"In progress","blue"],[flow,"Flow jobs",""],[recent,"Field activity ≤7d","green"],[money(spend),"Expense spend (180d)",""]];
   $("#summary").innerHTML=cells.map(c=>`<div class="stat"><div class="n ${c[2]}">${c[0]}</div><div class="l">${c[1]}</div></div>`).join("");
 }
 function card(p){

@@ -37,6 +37,23 @@ def strip(s):
     s = re.sub(r"&nbsp;|&amp;|&#160;", " ", s)
     return re.sub(r"\s+", " ", s).strip()
 
+# Lift's field 114 (Project Management Alerts) emits generic formula boilerplate
+# like "Alert: % Hours Assigned is greater than 1! Alert: % Hours Worked is
+# greater than 1!" - no project name, no numbers, and it duplicates the
+# contract-aware burn bar the dashboard already computes. Drop those clauses;
+# keep any substantive alert text Lift may put in the same field.
+GENERIC_ALERT = re.compile(r"%\s*hours\s+(assigned|worked)\s+is\s+greater\s+than\s+1", re.I)
+def clean_pm_alert(s):
+    if not s: return ""
+    parts = re.split(r"(?i)\balert:\s*", s)
+    keep = []
+    for part in parts:
+        part = part.strip().strip("!").strip()
+        if not part or GENERIC_ALERT.search(part):
+            continue
+        keep.append(part)
+    return "; ".join(keep)
+
 today = datetime.date.today()
 d_dr = (today - datetime.timedelta(days=45)).isoformat()
 d_exp = (today - datetime.timedelta(days=180)).isoformat()
@@ -62,7 +79,7 @@ for r in pj["data"]:
         "startDate": v(r,21), "endDate": v(r,22), "firstWorked": v(r,116), "lastWorked": v(r,117),
         "labor": {"assignedHours": aH or 0, "workedHours": wH or 0, "burnPct": burn},
         "materials": {"spent": 0.0, "budget": None, "dealAmount": v(r,146)},
-        "scope": strip(v(r,115)), "summary": strip(v(r,23)), "pmAlerts": strip(v(r,114)),
+        "scope": strip(v(r,115)), "summary": strip(v(r,23)), "pmAlerts": clean_pm_alert(strip(v(r,114))),
         "lastReport": None, "progress": "", "reports": [], "critical": []
     }
 

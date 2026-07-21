@@ -115,17 +115,10 @@
         <button data-s="Not Scheduled" class="on">Not Scheduled</button>
         <button data-s="Pipeline" class="on">Pipeline</button>
       </div></div>
-    <div><label class="lb">Type (pick any)</label>
-      <div class="statuschips" id="fType">
-        <button data-t="LTSA" class="on">LTSA</button>
-        <button data-t="Flow" class="on">Flow (CATL)</button>
-        <button data-t="Project" class="on">Project</button>
-        <button data-t="MSA" class="on">MSA</button>
-        <button data-t="EV" class="on">EV</button>
-        <button data-t="Warehouse" class="on">Warehouse</button>
-      </div></div>
     <div><label class="lb">Sort</label>
       <select id="fSort"><option value="activity">Recent activity</option><option value="hours">Hours worked</option><option value="crit">Critical items</option><option value="spend">Expense spend</option></select></div>
+    <div><label class="lb">Type</label>
+      <select id="fType"><option value="all">All types</option><option value="LTSA">LTSA</option><option value="Flow">Flow (CATL)</option><option value="Project">Project</option><option value="MSA">MSA</option><option value="EV">EV</option><option value="Warehouse">Warehouse</option></select></div>
     <div style="margin-left:auto"><input type="search" id="search" placeholder="Search project, code, customer, PM…" /></div>
   </div>
   <div class="grid" id="grid"></div>
@@ -201,10 +194,10 @@ function pool(){
   return RAW.projects.filter(p=> scope==="all"?true : scope==="internal"?p.internal : !p.internal);
 }
 function filtered(){
-  const sel=new Set([...document.querySelectorAll('#fStatus button.on')].map(b=>b.dataset.s)), selT=new Set([...document.querySelectorAll('#fType button.on')].map(b=>b.dataset.t)), q=$("#search").value.trim().toLowerCase(), so=$("#fSort").value;
+  const sel=new Set([...document.querySelectorAll('#fStatus button.on')].map(b=>b.dataset.s)), typeSel=$("#fType").value, q=$("#search").value.trim().toLowerCase(), so=$("#fSort").value;
   let a=pool().filter(p=>{
     if(!sel.has(p.status)) return false;
-    const k=kind(p); if(TYPE_CHIPS.includes(k) && !selT.has(k)) return false;
+    if(typeSel!=="all" && kind(p)!==typeSel) return false;
     if(q&&!((p.name+" "+p.code+" "+p.customer+" "+p.pm).toLowerCase().includes(q))) return false;
     return true;
   });
@@ -282,7 +275,7 @@ document.querySelectorAll("#scope button").forEach(b=>b.addEventListener("click"
   b.classList.add("on"); scope=b.dataset.v; renderGrid();
 }));
 document.querySelectorAll('#fStatus button').forEach(b=>b.addEventListener('click',()=>{b.classList.toggle('on');renderGrid();}));
-document.querySelectorAll('#fType button').forEach(b=>b.addEventListener('click',()=>{b.classList.toggle('on');renderGrid();}));
+$("#fType").addEventListener("change",renderGrid);
 $("#fSort").addEventListener("change",renderGrid);
 $("#search").addEventListener("input",renderGrid);
 function applyTheme(t){document.body.classList.toggle('light',t==='light');const b=$("#themeBtn");if(b)b.textContent=t==='light'?'Dark':'Light';}

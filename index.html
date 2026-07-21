@@ -86,6 +86,29 @@
   .rep .rh{display:flex;justify-content:space-between;font-size:12px;color:var(--ink-dim);margin-bottom:4px}
   footer{margin-top:34px;color:var(--ink-faint);font-size:12px;line-height:1.6;border-top:1px solid var(--line);padding-top:16px}
   @media(max-width:760px){.summary{grid-template-columns:repeat(2,1fr)}.kv{grid-template-columns:1fr}}
+  /* Timeline / Gantt view */
+  .tlwrap{overflow-x:auto;padding-bottom:8px}
+  .tl{min-width:820px;position:relative}
+  .tlaxis{position:relative;height:20px;margin-left:214px;border-bottom:1px solid var(--line);margin-bottom:6px}
+  .tltick{position:absolute;top:0;font-size:11px;color:var(--ink-dim);white-space:nowrap;padding-left:3px}
+  .tltick.today{color:var(--blue);font-weight:600}
+  .tlrows{position:relative}
+  .tlglines{position:absolute;left:214px;right:0;top:0;bottom:0;pointer-events:none}
+  .tlglines i{position:absolute;top:0;bottom:0;width:1px;background:var(--line);opacity:.6}
+  .tlglines i.today{background:var(--blue);opacity:.65;width:2px}
+  .tlrow{display:flex;align-items:center;height:30px}
+  .tlrow:hover{background:var(--panel2)}
+  .tllabel{width:214px;flex:0 0 214px;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:10px;color:var(--ink)}
+  .tllabel small{color:var(--ink-dim);margin-left:6px}
+  .tltrack{position:relative;flex:1;height:100%}
+  .tlbar{position:absolute;top:5px;height:20px;border-radius:4px;display:flex;align-items:center;padding:0 6px;font-size:10.5px;color:#fff;overflow:hidden;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.25);min-width:3px}
+  .tlbar span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tllegend{display:flex;gap:14px;margin:14px 0 0 214px;flex-wrap:wrap;font-size:11.5px;color:var(--ink-dim)}
+  .tllegend .lg{display:flex;align-items:center;gap:5px}
+  .tllegend i{width:12px;height:12px;border-radius:3px;display:inline-block}
+  .tlunsched{margin:10px 0 0 214px;font-size:11.5px;color:var(--ink-faint);max-width:900px;line-height:1.5}
+  .tk-LTSA{background:#2f9e64}.tk-Flow{background:#d0862a}.tk-Project{background:#3b74e0}
+  .tk-MSA{background:#8b5cf6}.tk-EV{background:#14b8a6}.tk-Warehouse{background:#64748b}.tk-Internal{background:#475569}
 </style>
 </head>
 <body>
@@ -94,6 +117,7 @@
     <div class="title"><h1>Renewance Active Projects</h1>
       <div class="sub" id="subline"></div></div>
     <div class="sources">
+      <div class="seg" id="viewseg"><button data-view="cards" class="on">Cards</button><button data-view="timeline">Timeline</button></div>
       <button class="themebtn" id="themeBtn">Light</button>
       <span class="src"><span class="dot ok"></span>Lift (Quickbase) · live</span>
       <a class="src" href="https://docs.craft.do/editor/d/251a6f03-39a1-a67e-c789-e83e370ae8b0/867bb73e-153e-daed-20b4-931848735f2d" target="_blank" style="text-decoration:none"><span class="dot ok"></span>Customer complaints (Craft, daily)</a>
@@ -146,6 +170,7 @@ const $=s=>document.querySelector(s);
 const money=n=>"$"+Math.round(n||0).toLocaleString();
 const num=n=>Math.round(n||0).toLocaleString();
 let scope="customer";
+let view="cards";
 function chipClass(s){return (s||"").replace(/[^A-Za-z]/g,"");}
 function daysSince(d){ if(!d) return null; const t=(Date.now()-new Date(d).getTime())/86400000; return Math.floor(t); }
 function isDiscrete(p){ return (p.status==="In Progress"||p.status==="Scheduled") && p.labor.assignedHours>0; }
@@ -238,9 +263,41 @@ function card(p){
 }
 function renderGrid(){
   renderSummary();
+  const g=$("#grid");
+  if(view==='timeline'){ g.style.display='block'; renderTimeline(); return; }
+  g.style.display='';
   const a=filtered();
-  $("#grid").innerHTML=a.map(card).join("")||`<div style="color:var(--ink-dim);padding:30px">No projects match.</div>`;
+  g.innerHTML=a.map(card).join("")||`<div style="color:var(--ink-dim);padding:30px">No projects match.</div>`;
   document.querySelectorAll(".card").forEach(c=>c.addEventListener("click",()=>openModal(c.dataset.id)));
+}
+function renderTimeline(){
+  const a=filtered(), rowsD=[], noDates=[];
+  a.forEach(p=>{ const s=p.startDate?new Date(p.startDate):null, ed=contractEnd(p), e=ed?new Date(ed):null;
+    if(s&&e&&!isNaN(s)&&!isNaN(e)&&e>s) rowsD.push({p,s,e}); else noDates.push(p); });
+  if(!rowsD.length){ $("#grid").innerHTML=`<div style="color:var(--ink-dim);padding:30px">No scheduled projects in this filter.${noDates.length?" ("+noDates.length+" without start/end dates)":""}</div>`; return; }
+  rowsD.sort((x,y)=>x.s-y.s);
+  let min=rowsD[0].s, max=rowsD[0].e;
+  rowsD.forEach(r=>{ if(r.s<min)min=r.s; if(r.e>max)max=r.e; });
+  min=new Date(min.getFullYear(),min.getMonth(),1);
+  max=new Date(max.getFullYear(),max.getMonth()+1,1);
+  const span=(max-min)||1, pc=t=>((t-min)/span*100);
+  let months=[], dd=new Date(min);
+  while(dd<max){ months.push({label:dd.toLocaleString('en',{month:'short'})+" '"+String(dd.getFullYear()).slice(2), left:pc(dd)}); dd=new Date(dd.getFullYear(),dd.getMonth()+1,1); }
+  const now=Date.now(), todayPc=(now>=min&&now<=max)?pc(now):null;
+  const axis=months.map(m=>`<span class="tltick" style="left:${m.left}%">${m.label}</span>`).join("")+(todayPc!=null?`<span class="tltick today" style="left:${todayPc}%">Today</span>`:"");
+  const glines=months.map(m=>`<i style="left:${m.left}%"></i>`).join("")+(todayPc!=null?`<i class="today" style="left:${todayPc}%"></i>`:"");
+  const rows=rowsD.map(({p,s,e})=>{
+    const L=pc(s), W=Math.max(pc(e)-L,0.6), k=kind(p), lab=W>7?`<span>${p.code}</span>`:"";
+    return `<div class="tlrow"><div class="tllabel" title="${p.name} (${p.customer||''})">${p.code}</div><div class="tltrack"><div class="tlbar tk-${k}" style="left:${L}%;width:${W}%" data-id="${p.id}" title="${p.name} · ${p.startDate} to ${contractEnd(p)} · ${k}">${lab}</div></div></div>`;
+  }).join("");
+  const legend=["LTSA","Flow","Project","MSA","EV","Warehouse"].map(k=>`<span class="lg"><i class="tk-${k}"></i>${k}</span>`).join("");
+  $("#grid").innerHTML=`<div class="tlwrap"><div class="tl">
+    <div class="tlaxis">${axis}</div>
+    <div class="tlrows"><div class="tlglines">${glines}</div>${rows}</div>
+    <div class="tllegend">${legend}</div>
+    ${noDates.length?`<div class="tlunsched"><strong>${noDates.length} without a start/end in Lift:</strong> ${noDates.map(p=>p.code).join(", ")}</div>`:""}
+  </div></div>`;
+  document.querySelectorAll(".tlbar").forEach(b=>b.addEventListener("click",()=>openModal(b.dataset.id)));
 }
 function openModal(id){
   const p=RAW.projects.find(x=>x.id===id); if(!p) return;
@@ -282,6 +339,9 @@ function applyTheme(t){document.body.classList.toggle('light',t==='light');const
 let _theme='dark';try{_theme=localStorage.getItem('rdash-theme')||'dark';}catch(e){}
 applyTheme(_theme);
 $("#themeBtn").addEventListener('click',()=>{_theme=document.body.classList.contains('light')?'dark':'light';applyTheme(_theme);try{localStorage.setItem('rdash-theme',_theme);}catch(e){}});
+try{view=localStorage.getItem('rdash-view')||'cards';}catch(e){}
+document.querySelectorAll('#viewseg button').forEach(b=>b.classList.toggle('on',b.dataset.view===view));
+document.querySelectorAll('#viewseg button').forEach(b=>b.addEventListener('click',()=>{view=b.dataset.view;document.querySelectorAll('#viewseg button').forEach(x=>x.classList.toggle('on',x.dataset.view===view));try{localStorage.setItem('rdash-view',view);}catch(e){}renderGrid();}));
 $("#subline").textContent="Live snapshot from Lift · Updated "+RAW.meta.updated+" · "+RAW.meta.counts.customer+" customer projects";
 $("#footer").innerHTML="Spine: Lift (Quickbase), projects, statuses, daily-report hours & narrative, expenses. Labor actuals from time entries; a plan/budget baseline is not yet populated in Lift (see note). Customer complaints from Outlook are Phase 2. Refresh target: GitHub Actions, weekdays ~4am CT.";
 renderGrid();

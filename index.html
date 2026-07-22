@@ -283,9 +283,10 @@ function renderTimeline(){
   const span=(max-min)||1, pc=t=>((t-min)/span*100);
   let months=[], dd=new Date(min);
   while(dd<max){ months.push({label:dd.toLocaleString('en',{month:'short'})+" '"+String(dd.getFullYear()).slice(2), left:pc(dd)}); dd=new Date(dd.getFullYear(),dd.getMonth()+1,1); }
+  const step=Math.max(1,Math.ceil(months.length/12));
   const now=Date.now(), todayPc=(now>=min&&now<=max)?pc(now):null;
-  const axis=months.map(m=>`<span class="tltick" style="left:${m.left}%">${m.label}</span>`).join("")+(todayPc!=null?`<span class="tltick today" style="left:${todayPc}%">Today</span>`:"");
-  const glines=months.map(m=>`<i style="left:${m.left}%"></i>`).join("")+(todayPc!=null?`<i class="today" style="left:${todayPc}%"></i>`:"");
+  const axis=months.map((m,i)=>(i%step||(todayPc!=null&&Math.abs(m.left-todayPc)<3.5))?"":`<span class="tltick" style="left:${m.left}%">${m.label}</span>`).join("")+(todayPc!=null?`<span class="tltick today" style="left:${todayPc}%">Today</span>`:"");
+  const glines=months.map((m,i)=>i%step?"":`<i style="left:${m.left}%"></i>`).join("")+(todayPc!=null?`<i class="today" style="left:${todayPc}%"></i>`:"");
   const rows=rowsD.map(({p,s,e})=>{
     const L=pc(s), W=Math.max(pc(e)-L,0.6), k=kind(p), lab=W>7?`<span>${p.code}</span>`:"";
     return `<div class="tlrow"><div class="tllabel" title="${p.name} (${p.customer||''})">${p.code}</div><div class="tltrack"><div class="tlbar tk-${k}" style="left:${L}%;width:${W}%" data-id="${p.id}" title="${p.name} · ${p.startDate} to ${contractEnd(p)} · ${k}">${lab}</div></div></div>`;

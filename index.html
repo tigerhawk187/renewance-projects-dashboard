@@ -142,7 +142,7 @@
     <div><label class="lb">Sort</label>
       <select id="fSort"><option value="activity">Recent activity</option><option value="hours">Hours worked</option><option value="crit">Critical items</option><option value="spend">Expense spend</option></select></div>
     <div><label class="lb">Type</label>
-      <select id="fType"><option value="all">All types</option><option value="LTSA">LTSA</option><option value="Flow">Flow</option><option value="Project">Project</option><option value="MSA">MSA</option><option value="EV">EV</option><option value="Warehouse">Warehouse</option></select></div>
+      <select id="fType"><option value="all">All types</option><option value="Flagged">Flagged (by priority)</option><option value="LTSA">LTSA</option><option value="Flow">Flow</option><option value="Project">Project</option><option value="MSA">MSA</option><option value="EV">EV</option><option value="Warehouse">Warehouse</option></select></div>
     <div style="margin-left:auto"><input type="search" id="search" placeholder="Search project, code, customer, PM…" /></div>
   </div>
   <div class="grid" id="grid"></div>
@@ -195,6 +195,9 @@ function kind(p){
   return "Project";
 }
 function ltsaDeal(p){ const a=agFor(p); return (a&&a.dealName)?a.dealName:p.code; }
+function flagInfo(p){ const c=p.critical||[]; return {reds:c.filter(x=>x.sev==="red").length, ambers:c.filter(x=>x.sev==="amber").length}; }
+function isFlagged(p){ const f=flagInfo(p); return (f.reds+f.ambers)>0; }
+function flagScore(p){ const f=flagInfo(p); return f.reds*1000+f.ambers; }
 function ragOf(pct){ return pct>=100?"r":(pct>=90?"a":"g"); }
 function laborBudget(p){ const a=agFor(p); return a&&a.laborHoursBudget?a.laborHoursBudget:null; }
 function matBudget(p){ const a=agFor(p); return a&&a.expenseBudget?a.expenseBudget:null; }
@@ -222,11 +225,12 @@ function filtered(){
   const sel=new Set([...document.querySelectorAll('#fStatus button.on')].map(b=>b.dataset.s)), typeSel=$("#fType").value, q=$("#search").value.trim().toLowerCase(), so=$("#fSort").value;
   let a=pool().filter(p=>{
     if(!sel.has(p.status)) return false;
-    if(typeSel!=="all" && kind(p)!==typeSel) return false;
+    if(typeSel==="Flagged"){ if(!isFlagged(p)) return false; }
+    else if(typeSel!=="all" && kind(p)!==typeSel) return false;
     if(q&&!((p.name+" "+p.code+" "+p.customer+" "+p.pm).toLowerCase().includes(q))) return false;
     return true;
   });
-  const key={activity:p=>-(new Date(p.lastReport||0).getTime()||0),hours:p=>-(p.labor.workedHours||0),crit:p=>-(p.critical.length),spend:p=>-(p.materials.spent||0)}[so];
+  const key = typeSel==="Flagged" ? (p=>-flagScore(p)) : {activity:p=>-(new Date(p.lastReport||0).getTime()||0),hours:p=>-(p.labor.workedHours||0),crit:p=>-(p.critical.length),spend:p=>-(p.materials.spent||0)}[so];
   return a.sort((x,y)=>key(x)-key(y));
 }
 function renderSummary(){

@@ -103,7 +103,7 @@
   .tltrack{position:relative;flex:1;height:100%}
   .tlbar{position:absolute;top:5px;height:20px;border-radius:4px;display:flex;align-items:center;padding:0 6px;font-size:10.5px;color:#fff;overflow:hidden;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.25);min-width:3px}
   .tlbar span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .tllegend{display:flex;gap:14px;margin:14px 0 0 214px;flex-wrap:wrap;font-size:11.5px;color:var(--ink-dim)}
+  .tllegend{display:flex;gap:14px;margin:0 0 12px;flex-wrap:wrap;font-size:11.5px;color:var(--ink-dim)}
   .tllegend .lg{display:flex;align-items:center;gap:5px}
   .tllegend i{width:12px;height:12px;border-radius:3px;display:inline-block}
   .tlunsched{margin:10px 0 0 214px;font-size:11.5px;color:var(--ink-faint);max-width:900px;line-height:1.5}
@@ -142,7 +142,7 @@
     <div><label class="lb">Sort</label>
       <select id="fSort"><option value="activity">Recent activity</option><option value="hours">Hours worked</option><option value="crit">Critical items</option><option value="spend">Expense spend</option></select></div>
     <div><label class="lb">Type</label>
-      <select id="fType"><option value="all">All types</option><option value="LTSA">LTSA</option><option value="Flow">Flow (CATL)</option><option value="Project">Project</option><option value="MSA">MSA</option><option value="EV">EV</option><option value="Warehouse">Warehouse</option></select></div>
+      <select id="fType"><option value="all">All types</option><option value="LTSA">LTSA</option><option value="Flow">Flow</option><option value="Project">Project</option><option value="MSA">MSA</option><option value="EV">EV</option><option value="Warehouse">Warehouse</option></select></div>
     <div style="margin-left:auto"><input type="search" id="search" placeholder="Search project, code, customer, PM…" /></div>
   </div>
   <div class="grid" id="grid"></div>
@@ -293,9 +293,9 @@ function renderTimeline(){
   }).join("");
   const legend=["LTSA","Flow","Project","MSA","EV","Warehouse"].map(k=>`<span class="lg"><i class="tk-${k}"></i>${k}</span>`).join("");
   $("#grid").innerHTML=`<div class="tlwrap"><div class="tl">
+    <div class="tllegend">${legend}</div>
     <div class="tlaxis">${axis}</div>
     <div class="tlrows"><div class="tlglines">${glines}</div>${rows}</div>
-    <div class="tllegend">${legend}</div>
     ${noDates.length?`<div class="tlunsched"><strong>${noDates.length} without a start/end in Lift:</strong> ${noDates.map(p=>p.code).join(", ")}</div>`:""}
   </div></div>`;
   document.querySelectorAll(".tlbar").forEach(b=>b.addEventListener("click",()=>openModal(b.dataset.id)));

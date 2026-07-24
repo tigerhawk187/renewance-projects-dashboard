@@ -8,7 +8,7 @@ and writes data/projects.js (window.DASHBOARD = {...}) for the dashboard.
 
 Pure standard library - no pip install needed.
 """
-import os, json, re, datetime, urllib.request
+import os, json, re, datetime, time, urllib.request, urllib.error
 
 REALM = os.environ.get("QB_REALM", "lift.quickbase.com")
 APP = "btctjiyp3"
@@ -17,15 +17,32 @@ T_EXPENSES = "btcwcub5k"
 T_DAILY = "btdnzrmkr"
 TOK = os.environ["QB_USER_TOKEN"]
 
-def api(path, body):
+# Quickbase sits behind Cloudflare; transient edge errors (522 connection
+# timed out, 429 rate limit, 5xx) and network blips should retry, not fail
+# the whole 4am run. Backoff 8s/16s/24s/32s, up to 5 attempts.
+TRANSIENT = {408, 425, 429, 500, 502, 503, 504, 520, 521, 522, 523, 524}
+def api(path, body, _attempt=1):
     req = urllib.request.Request("https://api.quickbase.com/v1/" + path,
         data=json.dumps(body).encode(), method="POST")
     req.add_header("QB-Realm-Hostname", REALM)
     req.add_header("Authorization", "QB-USER-TOKEN " + TOK)
     req.add_header("Content-Type", "application/json")
     req.add_header("User-Agent", "RenewanceDashboard/1.0")
-    with urllib.request.urlopen(req, timeout=120) as r:
-        return json.loads(r.read())
+    try:
+        with urllib.request.urlopen(req, timeout=120) as r:
+            return json.loads(r.read())
+    except urllib.error.HTTPError as e:
+        if e.code in TRANSIENT and _attempt < 5:
+            print("RETRY %s after HTTP %s (attempt %d)" % (path, e.code, _attempt))
+            time.sleep(min(60, 8 * _attempt))
+            return api(path, body, _attempt + 1)
+        raise
+    except (urllib.error.URLError, TimeoutError) as e:
+        if _attempt < 5:
+            print("RETRY %s after %r (attempt %d)" % (path, e, _attempt))
+            time.sleep(min(60, 8 * _attempt))
+            return api(path, body, _attempt + 1)
+        raise
 
 def v(rec, f): return rec.get(str(f), {}).get("value")
 def h(x):

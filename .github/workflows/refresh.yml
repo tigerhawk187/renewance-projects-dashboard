@@ -1,11 +1,13 @@
 name: Refresh dashboard data
 
-# 4am Central. GitHub cron is UTC and does not shift for daylight saving,
-# so this fires 09:00 UTC = 4am CDT (summer) / 5am CST (winter). Harmless
-# drift for a pre-dawn prep job. Also runnable on demand from the Actions tab.
+# Early-morning Central. GitHub cron is UTC and ignores daylight saving:
+# 08:20 UTC = 3:20am CDT (summer) / 2:20am CST (winter). Deliberately off the
+# top of the hour, because GitHub delays top-of-hour schedules under load
+# (09:00 UTC runs were landing 10:30-10:50am Central). Also runnable on demand
+# from the Actions tab.
 on:
   schedule:
-    - cron: "0 9 * * 1-5"
+    - cron: "20 8 * * 1-5"
   workflow_dispatch:
 
 permissions:

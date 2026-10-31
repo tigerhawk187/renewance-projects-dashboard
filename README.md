@@ -7,7 +7,7 @@ no dependency on any laptop being awake.
 
 ## How it works
 
-1. `.github/workflows/refresh.yml` runs weekdays at 09:00 UTC (4am CDT / 5am CST)
+1. `.github/workflows/refresh.yml` runs weekdays at 08:20 UTC (3:20am CDT / 2:20am CST)
    and can also be triggered manually from the Actions tab.
 2. It runs `qb_pull.py`, which reads the `QB_USER_TOKEN` secret, pulls active
    projects, expenses, and recent daily reports from the Lift Quickbase app,

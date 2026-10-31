@@ -21,10 +21,20 @@
   .src{background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:5px 11px;font-size:12px;color:var(--ink-dim);display:flex;align-items:center;gap:7px}
   .dot{width:8px;height:8px;border-radius:50%;display:inline-block}.dot.ok{background:var(--green)}.dot.off{background:var(--ink-faint)}
   .note{margin:14px 0 18px;background:linear-gradient(90deg,rgba(91,141,239,.13),rgba(91,141,239,.03));border:1px solid rgba(91,141,239,.32);color:#bcd2ff;border-radius:10px;padding:10px 14px;font-size:12.5px}
-  .summary{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:18px}
+  .summary{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:18px}
   .stat{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px}
   .stat .n{font-size:24px;font-weight:680}.stat .l{color:var(--ink-dim);font-size:12px;margin-top:2px}
-  .stat .n.red{color:var(--red)}.stat .n.green{color:var(--green)}.stat .n.blue{color:var(--blue)}
+  .stat .n.red{color:var(--red)}.stat .n.green{color:var(--green)}.stat .n.blue{color:var(--blue)}.stat .n.amber{color:var(--amber)}
+  .sechead{display:flex;align-items:center;gap:10px;margin:4px 0 12px;font-size:13px;color:var(--ink-dim);flex-wrap:wrap}
+  .sechead b{color:var(--ink);font-weight:650;font-size:14px}
+  .sechead .cnt{background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:1px 9px;font-size:12px;color:var(--ink)}
+  .idlehead{margin-top:30px;padding-top:18px;border-top:1px solid var(--line)}
+  .idlebtn{margin-left:auto;background:var(--panel);border:1px solid var(--line);color:var(--ink-dim);border-radius:9px;padding:5px 12px;font-size:12px;cursor:pointer;font-family:inherit}
+  .idlebtn:hover{color:var(--ink)}
+  .emptynote{color:var(--ink-faint);font-size:13px;padding:6px 0 4px}
+  .card.idle{opacity:.7}.card.idle:hover{opacity:1}
+  .nodr{font-size:10.5px;color:var(--amber);border:1px solid rgba(224,168,61,.45);border-radius:999px;padding:2px 8px;white-space:nowrap}
+  .tlrow.idle .tlbar{opacity:.4}.tlrow.idle .tllabel{color:var(--ink-faint)}
   .controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:16px}
   .seg{display:flex;background:var(--panel2);border:1px solid var(--line);border-radius:9px;overflow:hidden}
   .seg button{background:transparent;color:var(--ink-dim);border:0;padding:7px 14px;font-size:13px;cursor:pointer;font-family:inherit}
@@ -123,7 +133,7 @@
       <a class="src" href="https://docs.craft.do/editor/d/251a6f03-39a1-a67e-c789-e83e370ae8b0/867bb73e-153e-daed-20b4-931848735f2d" target="_blank" style="text-decoration:none"><span class="dot ok"></span>Customer complaints (Craft, daily)</a>
     </div>
   </header>
-  <div class="note"><strong>Live from Lift, budgets from contracts.</strong> Hours worked and expense spend are actuals from Lift. Where an agreement is on file, the burn bars compare actuals against the contracted labor-hours and expense budget; otherwise labor shows against Lift scheduled hours (discrete jobs) or as activity only (LTSA O&M). Open a card for the Contract panel, terms, and milestones.</div>
+  <div class="note"><strong>Active now = a daily report or hours logged in Lift in the last 14 days.</strong> Everything else sits in Idle below and moves back to Active on its own the next time it's worked. Hours and expense spend are Lift actuals; where an agreement is on file, burn bars compare them to the contracted budget. Open a card for the contract panel, terms, and milestones.</div>
   <div class="summary" id="summary"></div>
   <div class="controls">
     <div class="seg" id="scope">
@@ -171,6 +181,15 @@ const money=n=>"$"+Math.round(n||0).toLocaleString();
 const num=n=>Math.round(n||0).toLocaleString();
 let scope="customer";
 let view="cards";
+let showIdle=false;
+// Activity rule: a project is Active when it has a daily report OR hours
+// logged in Lift within ACTIVE_DAYS; everything else is Idle and returns to
+// Active automatically the next time it is worked.
+const ACTIVE_DAYS=14;
+function lastAct(p){ const a=p.lastReport?new Date(p.lastReport):null, b=p.lastWorked?new Date(p.lastWorked):null; if(a&&b) return a>b?a:b; return a||b||null; }
+function within(d,n){ const x=daysSince(d); return x!==null&&x<=n; }
+function isActive(p){ return within(p.lastReport,ACTIVE_DAYS)||within(p.lastWorked,ACTIVE_DAYS); }
+function noDailyReport(p){ return within(p.lastWorked,ACTIVE_DAYS)&&!within(p.lastReport,ACTIVE_DAYS); }
 function chipClass(s){return (s||"").replace(/[^A-Za-z]/g,"");}
 function daysSince(d){ if(!d) return null; const t=(Date.now()-new Date(d).getTime())/86400000; return Math.floor(t); }
 function isDiscrete(p){ return (p.status==="In Progress"||p.status==="Scheduled") && p.labor.assignedHours>0; }
@@ -230,17 +249,16 @@ function filtered(){
     if(q&&!((p.name+" "+p.code+" "+p.customer+" "+p.pm).toLowerCase().includes(q))) return false;
     return true;
   });
-  const key = typeSel==="Flagged" ? (p=>-flagScore(p)) : {activity:p=>-(new Date(p.lastReport||0).getTime()||0),hours:p=>-(p.labor.workedHours||0),crit:p=>-(p.critical.length),spend:p=>-(p.materials.spent||0)}[so];
+  const key = typeSel==="Flagged" ? (p=>-flagScore(p)) : {activity:p=>-((lastAct(p)||new Date(0)).getTime()||0),hours:p=>-(p.labor.workedHours||0),crit:p=>-(p.critical.length),spend:p=>-(p.materials.spent||0)}[so];
   return a.sort((x,y)=>key(x)-key(y));
 }
 function renderSummary(){
   const a=pool();
-  const inprog=a.filter(p=>p.status==="In Progress").length;
+  const act=a.filter(isActive).length, idl=a.length-act, ndr=a.filter(noDailyReport).length;
   const ltsa=new Set(a.filter(p=>kind(p)==="LTSA").map(ltsaDeal)).size;
   const flow=a.filter(p=>kind(p)==="Flow").length;
-  const recent=a.filter(p=>{const d=daysSince(p.lastReport);return d!==null&&d<=7;}).length;
   const spend=a.reduce((n,p)=>n+(p.materials.spent||0),0);
-  const cells=[[a.length,"Active projects",""],[ltsa,"LTSA agreements",""],[inprog,"In progress","blue"],[flow,"Flow jobs",""],[recent,"Field activity ≤7d","green"],[money(spend),"Expense spend (180d)",""]];
+  const cells=[[act,"Active now ("+ACTIVE_DAYS+"d)","green"],[idl,"Idle",""],[ndr,"Worked, no daily report","amber"],[ltsa,"LTSA agreements",""],[flow,"Flow jobs",""],[money(spend),"Expense spend (180d)",""]];
   $("#summary").innerHTML=cells.map(c=>`<div class="stat"><div class="n ${c[2]}">${c[0]}</div><div class="l">${c[1]}</div></div>`).join("");
 }
 function card(p){
@@ -248,14 +266,15 @@ function card(p){
   const reds=p.critical.filter(c=>c.sev==="red").length, ambers=p.critical.filter(c=>c.sev==="amber").length;
   let flag=`<span class="flag none">No flags</span>`;
   if(reds) flag=`<span class="flag red">● ${reds} critical</span>`; else if(ambers) flag=`<span class="flag amber">● ${ambers} to watch</span>`;
-  const d=daysSince(p.lastReport);
-  const last=p.lastReport?`Last report ${d===0?"today":d+"d ago"}`:"No recent report";
+  const la=lastAct(p), d=la?daysSince(la):null;
+  const last=la?`Last activity ${d<=0?"today":d+"d ago"}`:"No activity on record";
+  const ndr=noDailyReport(p)?`<span class="nodr">No daily report</span>`:"";
   const lbn=laborBurn(p), mbn=matBurn(p);
   let budget = lbn
     ? `<div class="burnrow"><div class="bl"><span>Labor ${num(p.labor.workedHours)} / ${num(lbn.budget)} h ${lbn.basis==="contract"?"(contract)":"(sched)"}</span><span>${lbn.pct}%</span></div><div class="bar"><i class="${ragOf(lbn.pct)}" style="width:${Math.min(lbn.pct,100)}%"></i></div></div>`
     : "";
   if(mbn) budget += `<div class="burnrow"><div class="bl"><span>Materials ${money(p.materials.spent)} / ${money(mbn.budget)}</span><span>${mbn.pct}%</span></div><div class="bar"><i class="${ragOf(mbn.pct)}" style="width:${Math.min(mbn.pct,100)}%"></i></div></div>`;
-  return `<div class="card" data-id="${p.id}">
+  return `<div class="card${isActive(p)?"":" idle"}" data-id="${p.id}">
     <div class="rowtop"><div><div class="pname">${p.name}</div><div class="pcode">${p.code}</div><div class="cust">${p.customer||"-"}${p.pm?" · "+p.pm:""}</div></div>
       <div style="text-align:right;white-space:nowrap"><span class="chip ${chipClass(p.status)}">${p.status}</span><div style="margin-top:5px;font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-dim)">${kind(p)}</div></div></div>
     <div class="metrics">
@@ -263,19 +282,29 @@ function card(p){
       <div class="metric"><div class="mv">${p.materials.spent>0?money(p.materials.spent):"-"}</div><div class="ml">expense spend</div></div>
     </div>${budget}
     <div class="dates"><span>Start <b>${p.startDate||"n/a"}</b></span><span>Contract end <b>${contractEnd(p)||"n/a"}</b></span>${estCompletion(p)?`<span>Est. done <b>${estCompletion(p)}</b></span>`:""}</div>
-    <div class="metaline">${flag}<span>${last}</span></div></div>`;
+    <div class="metaline">${flag}${ndr}<span>${last}</span></div></div>`;
 }
+function wireIdle(){ const b=$("#idleBtn"); if(b) b.addEventListener("click",()=>{ showIdle=!showIdle; try{localStorage.setItem('rdash-idle',showIdle?'1':'0');}catch(e){} renderGrid(); }); }
 function renderGrid(){
   renderSummary();
   const g=$("#grid");
-  if(view==='timeline'){ g.style.display='block'; renderTimeline(); return; }
-  g.style.display='';
-  const a=filtered();
-  g.innerHTML=a.map(card).join("")||`<div style="color:var(--ink-dim);padding:30px">No projects match.</div>`;
+  g.style.display='block';
+  const all=filtered(), act=all.filter(isActive), idl=all.filter(p=>!isActive(p));
+  if(view==='timeline'){
+    renderTimeline(showIdle?all:act);
+    g.insertAdjacentHTML('afterbegin',`<div class="sechead"><span><b>${showIdle?"Active + idle":"Active now"}</b> · ${act.length} active, ${idl.length} idle ${showIdle?"shown (dimmed)":"hidden"}</span><button class="idlebtn" id="idleBtn">${showIdle?"Hide idle":"Show idle"}</button></div>`);
+    wireIdle(); return;
+  }
+  let h=`<div class="sechead"><span><b>Active now</b> · daily report or hours logged in the last ${ACTIVE_DAYS} days</span><span class="cnt">${act.length}</span></div>`;
+  h+=act.length?`<div class="grid">${act.map(card).join("")}</div>`:`<div class="emptynote">Nothing in this filter has had a daily report or hours logged in the last ${ACTIVE_DAYS} days.</div>`;
+  h+=`<div class="sechead idlehead"><span><b>Idle</b> · no daily report or hours in ${ACTIVE_DAYS}+ days; moves back to Active automatically when worked</span><span class="cnt">${idl.length}</span><button class="idlebtn" id="idleBtn">${showIdle?"Hide":"Show"}</button></div>`;
+  if(showIdle&&idl.length) h+=`<div class="grid">${idl.map(card).join("")}</div>`;
+  g.innerHTML=h;
   document.querySelectorAll(".card").forEach(c=>c.addEventListener("click",()=>openModal(c.dataset.id)));
+  wireIdle();
 }
-function renderTimeline(){
-  const a=filtered(), rowsD=[], noDates=[];
+function renderTimeline(list){
+  const a=list||filtered(), rowsD=[], noDates=[];
   a.forEach(p=>{ const s=p.startDate?new Date(p.startDate):null, ed=contractEnd(p), e=ed?new Date(ed):null;
     if(s&&e&&!isNaN(s)&&!isNaN(e)&&e>s) rowsD.push({p,s,e}); else noDates.push(p); });
   if(!rowsD.length){ $("#grid").innerHTML=`<div style="color:var(--ink-dim);padding:30px">No scheduled projects in this filter.${noDates.length?" ("+noDates.length+" without start/end dates)":""}</div>`; return; }
@@ -293,7 +322,7 @@ function renderTimeline(){
   const glines=months.map((m,i)=>i%step?"":`<i style="left:${m.left}%"></i>`).join("")+(todayPc!=null?`<i class="today" style="left:${todayPc}%"></i>`:"");
   const rows=rowsD.map(({p,s,e})=>{
     const L=pc(s), W=Math.max(pc(e)-L,0.6), k=kind(p), lab=W>7?`<span>${p.code}</span>`:"";
-    return `<div class="tlrow"><div class="tllabel" title="${p.name} (${p.customer||''})">${p.code}</div><div class="tltrack"><div class="tlbar tk-${k}" style="left:${L}%;width:${W}%" data-id="${p.id}" title="${p.name} · ${p.startDate} to ${contractEnd(p)} · ${k}">${lab}</div></div></div>`;
+    return `<div class="tlrow${isActive(p)?"":" idle"}"><div class="tllabel" title="${p.name} (${p.customer||''})">${p.code}</div><div class="tltrack"><div class="tlbar tk-${k}" style="left:${L}%;width:${W}%" data-id="${p.id}" title="${p.name} · ${p.startDate} to ${contractEnd(p)} · ${k}">${lab}</div></div></div>`;
   }).join("");
   const legend=["LTSA","Flow","Project","MSA","EV","Warehouse"].map(k=>`<span class="lg"><i class="tk-${k}"></i>${k}</span>`).join("");
   $("#grid").innerHTML=`<div class="tlwrap"><div class="tl">
@@ -344,11 +373,12 @@ function applyTheme(t){document.body.classList.toggle('light',t==='light');const
 let _theme='dark';try{_theme=localStorage.getItem('rdash-theme')||'dark';}catch(e){}
 applyTheme(_theme);
 $("#themeBtn").addEventListener('click',()=>{_theme=document.body.classList.contains('light')?'dark':'light';applyTheme(_theme);try{localStorage.setItem('rdash-theme',_theme);}catch(e){}});
+try{showIdle=localStorage.getItem('rdash-idle')==='1';}catch(e){}
 try{view=localStorage.getItem('rdash-view')||'cards';}catch(e){}
 document.querySelectorAll('#viewseg button').forEach(b=>b.classList.toggle('on',b.dataset.view===view));
 document.querySelectorAll('#viewseg button').forEach(b=>b.addEventListener('click',()=>{view=b.dataset.view;document.querySelectorAll('#viewseg button').forEach(x=>x.classList.toggle('on',x.dataset.view===view));try{localStorage.setItem('rdash-view',view);}catch(e){}renderGrid();}));
 $("#subline").textContent="Live snapshot from Lift · Updated "+RAW.meta.updated+" · "+RAW.meta.counts.customer+" customer projects";
-$("#footer").innerHTML="Spine: Lift (Quickbase), projects, statuses, daily-report hours & narrative, expenses. Labor actuals from time entries; a plan/budget baseline is not yet populated in Lift (see note). Customer complaints from Outlook are Phase 2. Refresh target: GitHub Actions, weekdays ~4am CT.";
+$("#footer").innerHTML="Source: Lift (Quickbase) projects, statuses, daily reports, time entries, and expenses; contract budgets from the SharePoint Commercial agreements. Active = a daily report or hours logged in the last "+ACTIVE_DAYS+" days. Customer complaints: daily Outlook digest in Craft (link above). Refreshes weekdays early morning CT via GitHub Actions.";
 renderGrid();
 </script>
 </body>
